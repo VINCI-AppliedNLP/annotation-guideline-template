@@ -1,0 +1,88 @@
+body {
+  font-family: 'DejaVu Sans', sans-serif;
+  font-size: 10pt; /* Reduced from 11pt */
+  line-height: 1.2;
+  margin: 0.5cm;
+  max-width: 65em;
+}
+
+h1 {
+  font-size: 14pt; /* Reduced from 18pt */
+  color: #2c3e50;
+  margin-top: 1.4em;
+}
+
+h2 {
+  font-size: 13pt; /* Reduced from 14pt */
+  color: #2c3e50;
+  margin-top: 1.2em;
+}
+
+h3 {
+  font-size: 11pt; /* Reduced from 12pt */
+  color: #2c3e50;
+  margin-top: 0.9em;
+}
+
+p {
+  margin: 0.8em 0;
+}
+
+code {
+  font-size: 9pt; /* Reduced from 10pt */
+  background: #f8f8f8;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+pre {
+  font-size: 9pt; /* Reduced from 10pt */
+  background: #f8f8f8;
+  padding: 1em;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+th, td {
+  font-size: 9pt; /* Reduced from 10pt */
+  border: 1px solid #ddd;
+  padding: 6px;
+  text-align: left;
+}
+
+th {
+  background-color: #f2f2f2;
+}
+
+img {
+  max-width: 40%;
+  height: auto;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@page {
+  size: letter;
+  margin: 0.9cm;
+}
+
+/* List styling */
+ul, ol {
+  padding-left: 1.5em;
+  margin: 0.7em 0;
+}
+
+li {
+  margin-bottom: 0.3em;
+}
+
+/* Tighten up spacing */
+* + h1, * + h2, * + h3 {
+  margin-top: 1.2em;
+}

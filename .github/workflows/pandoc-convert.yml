@@ -5,10 +5,12 @@ on:
     branches: [ main, master ]
     paths:
       - '**.md'
+      - '**.css'
   pull_request:
     branches: [ main, master ]
     paths:
       - '**.md'
+      - '**.css'
   workflow_dispatch:  # This enables manual triggering
 
 jobs:
