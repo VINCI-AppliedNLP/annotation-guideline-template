@@ -1,0 +1,98 @@
+# These settings are synced to GitHub by https://probot.github.io/apps/settings/
+
+labels:
+  - name: duplicate
+    color: cfd3d7
+    description: This issue or pull request already exists
+
+  - name: epic
+    color: 30f454
+    description: A collection of user stories spanning multiple sprints
+  
+  - name: impact 100%
+    color: 7a6bdb
+    description: Very High impact
+  
+  - name: impact 20%
+    color: 7a6bdb
+    description: Very low impact
+  
+  - name: impact 40%
+    color: 7a6bdb
+    description: Low impact
+  
+  - name: impact 60%
+    color: 7a6bdb
+    description: Moderate impact
+  
+  - name: impact 80%
+    color: 7a6bdb
+    description: High impact
+  
+  - name: invalid
+    color: e4e669
+    description: This doesn't seem right
+  
+  - name: monitoring
+    color: 397cbf
+    description: Risk is being monitored
+  
+  - name: pm_approved
+    color: f4eb30
+    description: Approved by Product Manager
+  
+  - name: po_approved
+    color: b5f95c
+    description: Approved by Product Owner
+  
+  - name: probability 100%
+    color: c6492d
+    description: Very High probability
+  
+  - name: probability 20%
+    color: c6492d
+    description: Very low probability
+  
+  - name: probability 40%
+    color: c6492d
+    description: Low probability
+  
+  - name: probability 60%
+    color: c6492d
+    description: Moderate probability
+  
+  - name: probability 80%
+    color: c6492d
+    description: High probability
+  
+  - name: question
+    color: d876e3
+    description: Further information is requested
+  
+  - name: release
+    color: f7d699
+    description: Software Release Readiness checklist
+  
+  - name: risk
+    color: 52cbdd
+    description: ''
+  
+  - name: severity 1 critical
+    color: e99695
+    description: Critical severity
+  
+  - name: severity 2 high
+    color: e99695
+    description: High severity
+  
+  - name: severity 3 medium
+    color: e99695
+    description: Medium severity
+  
+  - name: severity 4 low
+    color: e99695
+    description: Low severity
+  
+  - name: user story
+    color: 2cba62
+    description: A feature described from the user perspective

@@ -1,0 +1,66 @@
+name: Convert Markdown to DOCX and PDF
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '**.md'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - '**.md'
+  workflow_dispatch:  # This enables manual triggering
+
+jobs:
+  convert_via_pandoc:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # This gives permission to push to the repository
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for proper git operations
+
+      - name: Find all Markdown files and convert to DOCX and PDF (excluding README.md)
+        run: |          
+          for mdfile in *.md; do
+            if [ -f "$mdfile" ]; then
+              # Convert filename to lowercase for case-insensitive comparison
+              lowercase_name=$(echo "$mdfile" | tr '[:upper:]' '[:lower:]')
+              # Skip if the file is README.md (case-insensitive)
+              if [ "$lowercase_name" != "readme.md" ]; then
+                # Get the base name without extension
+                basename=${mdfile%.md}
+
+                # Convert to DOCX
+                docker run --rm -v "$(pwd):/data" -w /data pandoc/core:3.1 "$mdfile" -o "${basename}.docx"
+                echo "Converted $mdfile to ${basename}.docx"
+
+                docker run --rm -v "$(pwd):/data" -w /data pandoc/core:3.1 "$mdfile" \
+                  -t html5 \
+                  --standalone \
+                  --metadata title="${basename}" \
+                  --css=style.css \
+                  -o "${basename}.html"
+                echo "Converted $mdfile to ${basename}.html"
+          
+                # Convert HTML to PDF using minidocks/weasyprint
+                docker run --rm -v "$(pwd):/data" -w /data minidocks/weasyprint \
+                  "${basename}.html" "${basename}.pdf"
+                echo "Converted ${basename}.html to ${basename}.pdf"
+
+              else
+                echo "Skipping $mdfile as it's a README file"
+              fi
+            fi
+          done
+
+      - name: Commit and push if changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add *.docx *.pdf
+          git commit -m "Update DOCX and PDF files from Markdown sources" -a || echo "No changes to commit"
+          git push origin HEAD:${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
