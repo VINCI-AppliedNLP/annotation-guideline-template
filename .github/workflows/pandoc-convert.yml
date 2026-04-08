@@ -2,67 +2,199 @@ name: Convert Markdown to DOCX and PDF
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ dev ]
     paths:
       - '**.md'
-      - '**.css'
+    tags:
+      - '*'
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
     paths:
       - '**.md'
-      - '**.css'
-  workflow_dispatch:  # This enables manual triggering
+  workflow_dispatch:
+    inputs:
+      create_tag:
+        description: 'Version to tag and use for output files (e.g. 3.6). Leave empty to skip tagging.'
+        required: false
+        default: ''
+      create_release:
+        description: 'Create a GitHub Release and upload generated files'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   convert_via_pandoc:
+    # Block workflow_dispatch on any branch other than dev
+    if: ${{ github.event_name != 'workflow_dispatch' || github.ref_name == 'dev' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # This gives permission to push to the repository
+      contents: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
-          fetch-depth: 0  # Fetch all history for proper git operations
+          fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
 
-      - name: Find all Markdown files and convert to DOCX and PDF (excluding README.md)
-        run: |          
+      - name: Determine version
+        id: version
+        run: |
+          INPUT_VERSION="${{ github.event.inputs.create_tag }}"
+          if [ -n "$INPUT_VERSION" ]; then
+            echo "value=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+            echo "Using user-specified version: $INPUT_VERSION"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG_NAME="${{ github.ref_name }}"
+            TAG_NAME="${TAG_NAME#v}"
+            TAG_NAME="${TAG_NAME#V}"
+            echo "value=$TAG_NAME" >> "$GITHUB_OUTPUT"
+            echo "Using tag version: $TAG_NAME"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+            echo "No version specified. Output files will not include a version suffix."
+          fi
+
+      - name: Create and push tag
+        if: ${{ steps.version.outputs.value != '' && github.ref_type != 'tag' && github.event_name != 'pull_request' }}
+        run: |
+          TAG_NAME="${{ steps.version.outputs.value }}"
+          git fetch --tags
+          if git ls-remote --tags origin "refs/tags/${TAG_NAME}" | grep -q "refs/tags/${TAG_NAME}$"; then
+            echo "Tag ${TAG_NAME} already exists on origin; skipping."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "${TAG_NAME}"
+            git push origin "${TAG_NAME}"
+            echo "Pushed tag ${TAG_NAME}"
+          fi
+
+      - name: Convert Markdown to DOCX and PDF
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          ASSETS_DIR=/tmp/release-assets
+          mkdir -p "$ASSETS_DIR"
+
           for mdfile in *.md; do
-            if [ -f "$mdfile" ]; then
-              # Convert filename to lowercase for case-insensitive comparison
-              lowercase_name=$(echo "$mdfile" | tr '[:upper:]' '[:lower:]')
-              # Skip if the file is README.md (case-insensitive)
-              if [ "$lowercase_name" != "readme.md" ]; then
-                # Get the base name without extension
-                basename=${mdfile%.md}
-
-                # Convert to DOCX
-                docker run --rm -v "$(pwd):/data" -w /data pandoc/core:3.1 "$mdfile" -o "${basename}.docx"
-                echo "Converted $mdfile to ${basename}.docx"
-
-                docker run --rm -v "$(pwd):/data" -w /data pandoc/core:3.1 "$mdfile" \
-                  -t html5 \
-                  --standalone \
-                  --metadata title="${basename}" \
-                  --css=style.css \
-                  -o "${basename}.html"
-                echo "Converted $mdfile to ${basename}.html"
-          
-                # Convert HTML to PDF using minidocks/weasyprint
-                docker run --rm -v "$(pwd):/data" -w /data minidocks/weasyprint \
-                  "${basename}.html" "${basename}.pdf"
-                echo "Converted ${basename}.html to ${basename}.pdf"
-
-              else
-                echo "Skipping $mdfile as it's a README file"
-              fi
+            [ -f "$mdfile" ] || continue
+            lowercase_name=$(echo "$mdfile" | tr '[:upper:]' '[:lower:]')
+            if [ "$lowercase_name" = "readme.md" ] || [ "$lowercase_name" = "contributing.md" ] || [ "$lowercase_name" = "read.md" ]; then
+              echo "Skipping $mdfile"
+              continue
             fi
+
+            basename=${mdfile%.md}
+
+            if echo "$basename" | grep -qE '_v[0-9]+(\.[0-9]+)*$'; then
+              outbase="$basename"
+              echo "Filename '$basename' already contains a version suffix, using as-is."
+            elif [ -n "$VERSION" ]; then
+              outbase="${basename}_v${VERSION}"
+              echo "Appending version suffix: ${basename} -> ${outbase}"
+            else
+              outbase="$basename"
+              echo "No version available, using basename as-is: $outbase"
+            fi
+
+            docker run --rm -v "$(pwd):/data" -w /data pandoc/core:3.1 "$mdfile" -o "${outbase}.docx"
+            echo "Converted $mdfile -> ${outbase}.docx"
+
+            docker run --rm -v "$(pwd):/data" -w /data pandoc/core:3.1 "$mdfile" \
+              -t html5 \
+              --standalone \
+              --metadata title="${outbase}" \
+              --css=style.css \
+              -o "${outbase}.html"
+
+            docker run --rm -v "$(pwd):/data" -w /data minidocks/weasyprint \
+              "${outbase}.html" "${outbase}.pdf"
+            echo "Converted $mdfile -> ${outbase}.pdf"
+
+            cp "${outbase}.docx" "$ASSETS_DIR/"
+            cp "${outbase}.pdf" "$ASSETS_DIR/"
+            # Include versioned Markdown in release assets
+            cp "$mdfile" "$ASSETS_DIR/${outbase}.md"
           done
 
-      - name: Commit and push if changes
+          echo "Generated assets:"
+          ls -la "$ASSETS_DIR/"
+
+      - name: Archive Guideline Markdown files
+        if: ${{ github.ref_type == 'tag' || steps.version.outputs.value != '' }}
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add *.docx *.pdf
-          git commit -m "Update DOCX and PDF files from Markdown sources" -a || echo "No changes to commit"
-          git push origin HEAD:${{ github.ref }}
+          if [ -z "$VERSION" ]; then
+            echo "No version resolved, skipping archive."
+            exit 0
+          fi
+
+          # Stage 1: Save guideline files from the CURRENT branch (main/tag)
+          # before switching branches, so we archive the released content.
+          TEMP_ARCHIVE=$(mktemp -d)
+          archived=0
+
+          for mdfile in *[Gg]uid[el]*[ei]*ne*.md; do
+            [ -f "$mdfile" ] || continue
+            basename="${mdfile%.md}"
+
+            # Skip files that already carry a version suffix
+            if echo "$basename" | grep -qE '_v[0-9]+(\.[0-9]+)*$'; then
+              echo "Skipping already-versioned file: $mdfile"
+              continue
+            fi
+
+            cp "$mdfile" "$TEMP_ARCHIVE/${basename}_v${VERSION}.md"
+            echo "Staged $mdfile -> ${basename}_v${VERSION}.md"
+            archived=1
+          done
+
+          # Stage 2: Switch to dev and commit the archived files.
+          if [ "$archived" -eq 1 ]; then
+            TARGET_BRANCH="dev"
+            echo "Pushing archive to branch: $TARGET_BRANCH"
+
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+
+            # Clean untracked generated files to avoid checkout conflicts
+            git clean -fd
+
+            git checkout "$TARGET_BRANCH"
+            git pull origin "$TARGET_BRANCH"
+
+            mkdir -p archives
+            cp "$TEMP_ARCHIVE"/* archives/
+            rm -rf "$TEMP_ARCHIVE"
+
+            git add archives/
+            if git diff --cached --quiet; then
+              echo "Archive files already up to date, nothing to commit."
+            else
+              git commit -m "Archive guideline files for v${VERSION}"
+              git push origin "$TARGET_BRANCH"
+              echo "Committed and pushed archived files."
+            fi
+          else
+            rm -rf "$TEMP_ARCHIVE"
+            echo "No guideline files found to archive."
+          fi
+
+      - name: Upload converted files as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: converted-docs
+          path: /tmp/release-assets/
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: ${{ (github.event.inputs.create_release == 'true' || github.ref_type == 'tag') && steps.version.outputs.value != '' && github.event_name != 'pull_request' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.value }}
+          name: Release ${{ steps.version.outputs.value }}
+          generate_release_notes: true
+          files: /tmp/release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
