@@ -22,7 +22,8 @@ A Markdown file saved to `meeting_minutes/YYYYMMDD.md` (date extracted from tran
 ## Procedure
 
 ### 1. Parse the transcript
-- Extract the meeting date from the transcript header or ask the user.
+- Extract the meeting date from the transcript header.
+  - If the transcript does not contain a recognizable date, **stop and ask the user** for the meeting date in **YYYYMMDD** format (e.g., `20260611`) before proceeding.
 - Identify speakers and their roles (annotators, clinical expert, project lead).
 - Flag segments where annotation cases, labeling rules, or schema decisions are discussed.
 
