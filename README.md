@@ -216,3 +216,58 @@ Or ask **GitHub Copilot** in VS Code:
 - **CSS styling:** Edit `style.css` to customize the appearance of generated PDF files.
 - If you need to re-generate DOCX/PDF without creating a release, use **Actions → Run workflow** on the `dev` branch (leave the version field empty and the release checkbox unchecked).
 - **Copilot tips:** You can ask Copilot to help with commit messages, PR descriptions, change summaries, and tagging.
+
+---
+
+## Copilot Skills — AI-Assisted Annotation Workflows
+
+This repository includes two custom **GitHub Copilot Skills** (located in `.github/skills/`) that automate common annotation-project tasks directly from VS Code chat. These skills are automatically available when you open this repository in VS Code with the GitHub Copilot extension installed.
+
+### Skill 1: Generate Meeting Minutes
+
+**Skill name:** `generate-meeting-minutes`
+
+Converts a raw meeting transcript into structured meeting minutes focused on annotation decisions.
+
+**How to use:**
+
+1. Open VS Code chat (Copilot) in this workspace.
+2. Type `/generate-meeting-minutes` in the chat input to invoke the skill.
+3. Provide the raw transcript by one of these methods:
+   - Paste the transcript text directly into the chat.
+   - Attach a transcript file to the chat message.
+   - Reference a file path in `meeting_transcripts/`.
+4. Example prompts:
+   > `/generate-meeting-minutes` followed by the pasted transcript (in vtt format)
+
+**What it produces:**
+
+- A structured Markdown file saved to `meeting_minutes/YYYYMMDD.md`.
+- Sections include: Attendees, Agenda, Progress Update, **Key Decisions and Clarifications** (the most important section — each decision is a standalone annotation rule), Action Items, and Timeline Notes.
+- Decisions are cross-referenced against existing files in `meeting_minutes/` to flag when a new decision supersedes a prior one.
+
+### Skill 2: Generate Adjudication Examples
+
+**Skill name:** `generate-adjudication-examples`
+
+Creates corrected adjudication example files by applying meeting-minutes decisions to de-identified annotation cases.
+
+**How to use:**
+
+1. Open VS Code chat (Copilot) in this workspace.
+2. Type `/generate-adjudication-examples` in the chat input to invoke the skill.
+3. Provide two inputs:
+   - **De-identified example cases** — paste the text, attach a file, or reference a file containing annotation snippets with annotator-level labels.
+   - **Meeting decisions** — reference a meeting minutes file (e.g., `meeting_minutes/20260528.md`), provide a meeting date, or paste decisions directly.
+4. Example prompts:
+   > `/generate-adjudication-examples` followed by pasted cases and a reference to the meeting minutes
+   >
+   > `/generate-adjudication-examples Create round 3 examples from the attached cases, applying rules from meeting_minutes/20260528.md`
+
+
+**What it produces:**
+
+- A Markdown file saved to `draft_deid_examples/roundN_example.md`.
+- Each example includes the corrected labels (Evidence Type, Assertion, Temporality, Experiencer, Severity, etc.) with an explanation citing the specific meeting rule that justified the correction.
+- A file header summarizing which meeting rules are in play for the round.
+- A report of how many examples were processed, how many labels changed, and which rules triggered corrections.
