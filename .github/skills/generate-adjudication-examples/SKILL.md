@@ -13,7 +13,7 @@ argument-hint: 'Provide de-identified example cases (pasted or attached) and the
 
 ## Inputs
 The user will provide:
-1. **De-identified example cases** — pasted text or attached file containing annotation snippets with annotator-level labels (typically including columns: Annotator, Annotation Text, Span, Class, Assertion, Experiencer, Temporality, Severity/Burden/Certainty).
+1. **De-identified example cases** — pasted text or attached file containing annotation snippets with annotator-level labels (typically including columns such as Annotator, Annotation Text, Span, Class/Label, and project-specific attributes).
 2. **Meeting decisions** — either:
    - A reference to a meeting minutes file (e.g., `meeting_minutes/20260528.md`), or
    - A meeting date so the skill can locate the relevant file, or
@@ -24,43 +24,53 @@ A Markdown file saved to `draft_deid_examples/roundN_example.md` (round number i
 
 ## Procedure
 
-### 1. Load the meeting decisions
+### 1. Discover the project's annotation schema
+Before processing examples, identify the project's terminology:
+1. Locate the canonical guideline file — root-level `.md` files excluding `README.md` and `CONTRIBUTING.md`.
+2. Read the guideline to extract:
+   - **Entity/class names** used in the schema (e.g., the labels annotators assign to spans).
+   - **Attribute names and allowed values** beyond the common defaults (Assertion, Temporality, Experiencer). Look for project-specific attributes such as Severity, Burden, Certainty, or custom modifiers.
+   - **Attribute ordering convention** used in the appendix examples.
+3. Use these names and ordering consistently throughout the generated examples. When no appendix examples exist yet, default to: `Evidence Type → Assertion → Temporality → Experiencer → [project-specific attributes]`.
+
+### 2. Load the meeting decisions
 - Read the referenced meeting minutes file from `meeting_minutes/`.
 - Extract all numbered decisions from the **Key Decisions and Clarifications** section.
 - Build a checklist of applicable rules (each rule = a label-correction trigger).
 
-### 2. Parse the input examples
+### 3. Parse the input examples
 For each example case, extract:
-- File identifier and date
-- The clinical text snippet
-- Each annotator's label row (Class, Assertion, Experiencer, Temporality, Severity, Burden, Certainty, etc.)
+- File identifier and date (if present)
+- The text snippet
+- Each annotator's label row (class/label and all attributes present in the input)
 - The original explanation (if provided)
 
-### 3. Apply meeting rules to correct labels
-For each example, walk through the decision checklist and determine whether any rule changes the adjudicated label. Common correction patterns:
+### 4. Apply meeting rules to correct labels
+For each example, walk through the decision checklist and determine whether any rule changes the adjudicated label. Common correction patterns include:
 
-| Meeting Rule | Label Impact |
+| Rule Pattern | Typical Label Impact |
 |---|---|
-| Symptom in medication/template list only → ignore | Remove annotation or mark "No annotation" |
-| Chronic non-resolving diagnosis → current | Change Temporality from Historical to Current |
-| MMRC-like descriptors → infer burden | Set Burden to appropriate level (High/Moderate/Low) |
-| Educational handout text → ignore | Remove annotation or mark "No annotation" |
-| FEV1 excluded from severity classification | Set Severity to Unspecified |
-| Encounters within 2 weeks → one episode | Merge exacerbation counts, note episode linkage |
+| Mention appears only in boilerplate/template text → ignore | Remove annotation or mark "No annotation" |
+| Context indicates a different temporal status than annotated | Change the temporal attribute to the correct value |
+| A specific attribute value is excluded or redefined by a new rule | Update the attribute value accordingly |
+| Multiple mentions should be merged into a single annotation | Consolidate and note linkage |
+| Educational, instructional, or non-clinical text → ignore | Remove annotation or mark "No annotation" |
+
+The specific rules depend entirely on the project and the meeting decisions. Use the decision checklist from Step 2 — do not assume any fixed set of correction patterns.
 
 If no rule applies, keep the majority/adjudicated label unchanged.
 
-### 4. Write each example using the annotation-guideline format
+### 5. Write each example using the annotation-guideline format
 
-Use the same bulleted-list style found in the project's XXXXXX_Annotation_Guidelines.md appendix. **Do not use tables.**
+Match the formatting style found in the project's guideline appendix. If no appendix examples exist yet, use this default bulleted-list format. **Do not use tables for examples.**
 
 ```markdown
 N. "**annotated span or key phrase**" — surrounding context in plain text
-    - Evidence Type: [Class]
+    - Evidence Type: [Class/Label]
     - Assertion: [Affirmed/Negated/…]
-    - Temporality: [Current/Historical]
-    - Experiencer: [Patient/Other]
-    - [Severity/Certainty/etc. as applicable]: [value]
+    - Temporality: [Current/Historical/…]
+    - Experiencer: [Patient/Other/…]
+    - [Additional project-specific attributes as applicable]: [Value]
 
     [1-3 sentence explanation: which meeting rule applies, why labels were set this way, how annotator disagreement was resolved.]
 ```
@@ -74,10 +84,9 @@ N. "**key phrase**" — surrounding context in plain text
     [Explanation referencing the specific meeting decision.]
 ```
 
-Attribute ordering follows the guideline convention:
-`Evidence Type → Assertion → Temporality → Experiencer → Severity → Certainty`
+Use the attribute names and ordering discovered in Step 1.
 
-### 5. Write the file header
+### 6. Write the file header
 Summarize which meeting rules are in play for this round at the top of the file:
 
 ```markdown
@@ -89,14 +98,14 @@ This file aligns labels/explanations to decisions documented in meeting minutes:
 - ...
 ```
 
-### 6. Save and confirm
+### 7. Save and confirm
 - Save to `draft_deid_examples/roundN_example.md`.
 - Report: number of examples processed, number of labels changed, which rules triggered corrections.
 
 ## Quality Checks
 - Every corrected label must cite the specific meeting decision that justifies it.
 - If the input example contains annotator disagreement, explain how it was resolved.
-- Do not invent clinical context not present in the snippet or the meeting minutes.
+- Do not invent context not present in the snippet or the meeting minutes.
 - If an example does not match any meeting rule, keep the majority label and state "No rule-based correction; majority label retained."
 - Preserve all de-identification — never attempt to reconstruct redacted identifiers.
-- Use consistent attribute names matching the project schema (Class, Assertion, Experiencer, Temporality, Severity, Certainty).
+- Use consistent attribute names matching the project's annotation schema (discovered in Step 1).
