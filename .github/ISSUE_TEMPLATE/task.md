@@ -1,6 +1,6 @@
 ---
 name: Task
-about: Product level Task issue.
+about: General task related to maintaining or updating the annotation guideline
 title: 'Task - '
 labels: task
 assignees: ''
@@ -8,9 +8,5 @@ assignees: ''
 ---
 
 ## Task
-
-Related GitHub User Story: #
-
-
 
 ### Description
