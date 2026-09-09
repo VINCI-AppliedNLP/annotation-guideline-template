@@ -79,6 +79,8 @@ The GitHub Actions workflow automatically converts all root-level Markdown files
 
 **When to use:** When the guideline on `dev` is ready to become the next official version — typically after team review and agreement.
 
+> 💡 **Recommended shortcut:** the `/release-guideline` Copilot Skill performs this step *and* the tagged release in § 3 in one go — commit → PR → review → merge → verify → tag → release. See [§ 3 Option A](#option-a-release-guideline-copilot-skill-recommended). The manual options below remain available.
+
 ### Option A: Using VS Code with GitHub Copilot (Recommended)
 
 1. Ensure all your changes are committed and pushed to `dev`.
@@ -120,24 +122,46 @@ The GitHub Actions workflow automatically converts all root-level Markdown files
 
 **When to use:** After the Pull Request is merged into `main` and you want to create an official tagged release with downloadable DOCX/PDF files.
 
-There are **two ways** to create a release:
+There are **three ways** to create a release — the `/release-guideline` skill is recommended because it performs and verifies every step for you.
 
-### Option A: Tag & Push (via Git CLI or Copilot)
+### Option A: `/release-guideline` Copilot Skill (Recommended)
 
-Create and push a Git tag on `dev`. This triggers the workflow automatically and creates a full GitHub Release.
+Runs the entire release lifecycle from VS Code chat: commit and push pending work on `dev` → open the `dev` → `main` pull request → review it → merge it → **verify `main` is up to date with `dev`** → tag the merge commit → push the tag → watch the workflow and confirm the published release.
 
-Using **Git CLI**:
+1. Open VS Code chat (Copilot) in this workspace, on the `dev` branch.
+2. Type `/release-guideline` — optionally with a version and a summary:
+   > `/release-guideline`
+   >
+   > `/release-guideline Release 1.2 — adds MMRC severity rules and round 7 examples`
+3. If no version is given, the skill infers the next one from tag history and asks you to confirm it.
+4. It pauses for your confirmation before merging the PR and before pushing the tag.
+
+> The skill never force-pushes, never deletes `dev`, never reuses an existing tag, and refuses to tag until `main` provably contains everything on `dev`. See `.github/skills/release-guideline/SKILL.md`.
+
+Use Option B or C instead when you want to drive the release manually or the skill is unavailable.
+
+### Option B: Tag & Push (via Git CLI)
+
+Create and push a Git tag on the merge commit of `main`. This triggers the workflow automatically and creates a full GitHub Release.
+
+Using **Git CLI** (no branch switching needed — you can stay on `dev`):
 ```bash
-git checkout dev
-git pull origin dev
-git tag 1.0
+git fetch origin --tags --prune
+
+# Verify main already contains everything on dev
+git merge-base --is-ancestor origin/dev origin/main   # must succeed
+git --no-pager diff --stat origin/main origin/dev     # must print nothing
+
+git tag 1.0 origin/main
 git push origin 1.0
 ```
+
+> ⚠️ Always confirm `main` is up to date with `dev` before tagging. If the PR has not merged yet, the tag would capture the wrong content.
 
 Or ask **GitHub Copilot** in VS Code:
 > _"Tag 1.0 and push"_
 
-### Option B: Manual Workflow Dispatch (via GitHub Actions UI)
+### Option C: Manual Workflow Dispatch (via GitHub Actions UI)
 
 1. Go to the repository on GitHub.
 
@@ -157,7 +181,7 @@ Or ask **GitHub Copilot** in VS Code:
 
 > ⚠️ The workflow dispatch is **restricted to the `dev` branch**. Selecting any other branch will cause the job to be skipped.
 
-### What happens automatically (both options)
+### What happens automatically (all options)
 
 1. All root-level guideline Markdown files are converted to **DOCX** and **PDF** (with the version appended to filenames).
 2. A Git **tag** (e.g., `1.0`) is created and pushed (if it doesn't already exist).
@@ -180,6 +204,8 @@ Or ask **GitHub Copilot** in VS Code:
 
 ## Quick Reference — Complete Release Lifecycle
 
+> **Fastest path (steps 2–3):** run `/release-guideline` in VS Code chat and it handles the PR, review, merge, verification, tag, and release for you.
+
 ```
  ┌──────────────────────────────────────────────────────────┐
  │  1. EDIT on dev branch                                   │
@@ -191,15 +217,18 @@ Or ask **GitHub Copilot** in VS Code:
                     ▼
  ┌──────────────────────────────────────────────────────────┐
  │  2. PULL REQUEST: dev → main                             │
- │     - VS Code + Copilot  or  GitHub Web UI               │
+ │     - /release-guideline  (recommended, does 2 + 3)      │
+ │     - or VS Code + Copilot  or  GitHub Web UI            │
  │     - Team reviews → merge when approved                 │
  └──────────────────┬───────────────────────────────────────┘
                     │
                     ▼
  ┌──────────────────────────────────────────────────────────┐
  │  3. RELEASE (choose one)                                 │
- │     A. git tag {version} → git push origin {version}     │
- │     B. Actions → Run workflow on dev (set version +      │
+ │     A. /release-guideline  (recommended)                 │
+ │     B. verify main == dev → git tag {version}            │
+ │        origin/main → git push origin {version}           │
+ │     C. Actions → Run workflow on dev (set version +      │
  │        check release)                                    │
  │     → Creates tag, archives .md, publishes DOCX/PDF      │
  └──────────────────────────────────────────────────────────┘
@@ -216,12 +245,13 @@ Or ask **GitHub Copilot** in VS Code:
 - **CSS styling:** Edit `style.css` to customize the appearance of generated PDF files.
 - If you need to re-generate DOCX/PDF without creating a release, use **Actions → Run workflow** on the `dev` branch (leave the version field empty and the release checkbox unchecked).
 - **Copilot tips:** You can ask Copilot to help with commit messages, PR descriptions, change summaries, and tagging.
+- **Releasing:** prefer the `/release-guideline` skill over manual tagging — it verifies that `main` is up to date with `dev` before the tag is pushed.
 
 ---
 
 ## Copilot Skills — AI-Assisted Annotation Workflows
 
-This repository includes two custom **GitHub Copilot Skills** (located in `.github/skills/`) that automate common annotation-project tasks directly from VS Code chat. These skills are automatically available when you open this repository in VS Code with the GitHub Copilot extension installed.
+This repository includes custom **GitHub Copilot Skills** (located in `.github/skills/`) that automate common annotation-project tasks directly from VS Code chat. These skills are automatically available when you open this repository in VS Code with the GitHub Copilot extension installed.
 
 ### Skill 1: Generate Meeting Minutes
 
@@ -271,3 +301,50 @@ Creates corrected adjudication example files by applying meeting-minutes decisio
 - Each example includes the corrected labels (Evidence Type, Assertion, Temporality, Experiencer, Severity, etc.) with an explanation citing the specific meeting rule that justified the correction.
 - A file header summarizing which meeting rules are in play for the round.
 - A report of how many examples were processed, how many labels changed, and which rules triggered corrections.
+
+### Skill 3: Update Guideline
+
+**Skill name:** `update-guideline`
+
+Incorporates meeting decisions (and matching adjudication examples) into the canonical guideline Markdown file.
+
+**How to use:**
+
+1. Open VS Code chat (Copilot) in this workspace.
+2. Type `/update-guideline` in the chat input to invoke the skill.
+3. Provide the meeting minutes file, and optionally an adjudication examples file:
+   > `/update-guideline meeting_minutes/20260528.md draft_deid_examples/round6_example.md`
+
+**What it produces:**
+
+- A new dated entry at the top of the **Key Updates** section of the guideline.
+- Selected examples appended to the matching subsections of the **Appendix: Example Annotations**.
+- A report of which decisions were added, which were skipped as already covered, and which examples were appended.
+
+### Skill 4: Release Guideline
+
+**Skill name:** `release-guideline`
+
+Runs the full release lifecycle for a new guideline version — this is the recommended way to release (see § 3 Option A).
+
+**How to use:**
+
+1. Open VS Code chat (Copilot) in this workspace, with the `dev` branch checked out.
+2. Type `/release-guideline` in the chat input to invoke the skill.
+3. Optionally supply the version and a summary:
+   > `/release-guideline`
+   >
+   > `/release-guideline Release 1.2 — adds MMRC severity rules and round 7 examples`
+
+**What it does:**
+
+1. Preflight checks — confirms you are on `dev`, in sync with `origin/dev`, and that no generated DOCX/PDF/HTML or PHI-bearing files are about to be committed.
+2. Determines the version — infers the next `MAJOR.MINOR` tag from tag history (or uses yours) and asks you to confirm.
+3. Commits and pushes any pending guideline work to `dev`.
+4. Opens the `dev` → `main` pull request with a change summary generated from the commits since the last tag.
+5. Reviews the diff and reports findings, then merges after your confirmation. It fixes only obvious mechanical errors on its own — content decisions, version ambiguities, merge conflicts, and suspected PHI are brought back to you for a decision.
+6. **Verifies `main` is up to date with `dev`** before tagging, and stops if any commit is missing.
+7. Tags the merge commit on `main` and pushes the tag — without switching your local branch off `dev`.
+8. Watches the workflow run, confirms the published GitHub Release and its assets, and pulls the archive commit the workflow pushes back to `dev`.
+
+**Requirements:** the GitHub CLI (`gh`) installed and authenticated (`gh auth status`).
